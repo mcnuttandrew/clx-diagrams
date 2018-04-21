@@ -10,6 +10,8 @@ The naive baysian script (scripts/naive-byes-compound.py) can be run from root o
 python scripts/naive-bayes-compound.py
 ```
 
+This script requires NLTK to run. This makes usse of auxillary functions in utils.py and mutual-information.py
+
 ## bible scraper
 
 Running the bible scraping script (scripts/bible-scraper) has several steps.

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import nltk
 import random
+from utils import read_in_corpus
+from mutual_information import compute_bigram_and_unigram_mutual_info
 
 def read_in_corpus(filename):
     """
@@ -96,18 +98,37 @@ def consonent_to_vowel_transitions_fraction(word):
             transitions += 1
     return transitions# / len(word)
 
+def find_index_of_most_negative_mutual_info(word):
+    """
+    find where in the word the most negative pmi occurs
+    """
+
+    minimizing_idx = 0
+    minimizing_val = 0
+    for idx in range(0, len(word)):
+        letter_a = word[idx]
+        letter_b = word[idx + 1] if idx < (len(word) - 1) else ' '
+        pair = (letter_a + letter_b)
+        mutual_info_val = mutual_info[pair]
+        if mutual_info_val < minimizing_val:
+            minimizing_val = mutual_info_val
+            minimizing_idx = idx
+    return float("{0:.2f}".format((minimizing_idx + 0.0) / len(word)))
+
 def compund_features(word):
     """
     convert a word into a format to give to the classifer
     """
+    word_len = len(word)
     return {
-        'last_letter': word[-1],
-        'word_length': len(word),
-        'first_letter': word[0],
-        'num_vowels': num_values(word),
-        # middle letter?
+        # 'last_letter': word[-1],
+        # 'word_length': word_len,
+        # 'first_letter': word[0],
+        # 'num_vowels': num_values(word),
+        'minimizing_fraction': find_index_of_most_negative_mutual_info(word),
+        # 'middle_letter': word[(word_len - 1) / 2 if (word_len % 2) else word_len / 2],
         # maximize negative mutual information
-        'txns': consonent_to_vowel_transitions_fraction(word)
+        # 'txns': consonent_to_vowel_transitions_fraction(word)
     }
 
 
@@ -141,10 +162,11 @@ def test_classifer(classifier):
         ]
     # test_cases = [('mammutwörter', True), ('backpfeifengesicht', True), ('heute', False)]
     for word, expected in test_cases:
-        print "{0}: classfied as {1}, expected {2}".format(
+        print "{0}: classfied as {1}, expected {2}. \n CLASSIFIER INPUT {3}".format(
             word,
             classifier.classify(compund_features(word)),
-            'compound' if expected else 'non compound'
+            'compound' if expected else 'non compound',
+            compund_features(word)
             )
     # for idx in range(0, len(test_cases)):
     #     c = test_cases[idx]
@@ -178,6 +200,8 @@ def main():
     """
     main method
     """
+    global mutual_info
+    mutual_info = compute_bigram_and_unigram_mutual_info('./data/eng-dictionary.txt')
     compounds, non_compounds = build_training_data('./data/eng-dictionary.txt')
     classifer = train_model(compounds, non_compounds)
     test_classifer(classifer)
