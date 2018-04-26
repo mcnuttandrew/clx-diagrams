@@ -18,7 +18,6 @@ def build_training_data(filename):
     lang_dict = {}
     for word in input_corpus:
         lang_dict[word] = True
-
     # evaluate whether or not every word in dictionary is a compound
 
     suspected_words = []
@@ -38,11 +37,9 @@ def build_training_data(filename):
         if len(word_with_associates['sub_words']):
             suspected_words.append(word_with_associates)
 
-    # for sus_word in suspected_words:
-    #     print "Word {0}".format(sus_word["word"])
-    #     print sus_word["sub_words"]
     found_words = {}
     for sus_word in suspected_words:
+        # print "word: {0} subwords: {1}".format(sus_word["word"], sus_word["sub_words"])
         found_words[sus_word["word"]] = True
 
     non_compounds = []
@@ -60,18 +57,23 @@ def build_training_data(filename):
 
 def base_gold_check(eng_dict, found_words):
     count = 0
-    gold_standard = read_in_corpus('./data/english-compound-gold-standard.txt')
+    gold_standard = read_in_corpus('./data/english_compound_words.txt')
     not_found = []
     for word in gold_standard:
+        # if the word was in the predicated set cool count it
         if word in found_words:
             count += 1
         else:
+            # if the word was not in the predicated set but was present in the dictionaty we missed it
             if word in eng_dict:
                 not_found.append(word)
-    print "Found {0}/{1} -> word in dict / word in gold standard".format(count, len(gold_standard))
-    print "The following words from the gold standard were not found in the input dictinary: {0}".format(
-        ', '.join(not_found)
-    )
+
+    compounds_known_to_be_in_dict = 0
+    for word in gold_standard:
+        if word in eng_dict:
+            compounds_known_to_be_in_dict += 1
+    print "The naive cutting technique picked up {0}/{1} known compounds that were present in the original diction".format(count, compounds_known_to_be_in_dict)
+    print "It missed: {0}".format(', '.join(not_found))
 
 
 # from nltk.corpus import names
@@ -105,30 +107,33 @@ def find_index_of_most_negative_mutual_info(word):
 
     minimizing_idx = 0
     minimizing_val = 0
+    # print mutual_info
+    # for idx in range(-1, len(word)):
     for idx in range(0, len(word)):
-        letter_a = word[idx]
+        letter_a = word[idx] if idx >= 0 else '#'
         letter_b = word[idx + 1] if idx < (len(word) - 1) else ' '
         pair = (letter_a + letter_b)
-        mutual_info_val = mutual_info[pair]
+        mutual_info_val = mutual_info[pair] if pair in mutual_info else -10000
         if mutual_info_val < minimizing_val:
             minimizing_val = mutual_info_val
             minimizing_idx = idx
-    return float("{0:.2f}".format((minimizing_idx + 0.0) / len(word)))
+    return (minimizing_idx + 0.0) / len(word)
+    # return float("{0:.3f}".format((minimizing_idx + 0.0) / len(word)))
 
 def compund_features(word):
     """
-    convert a word into a format to give to the classifer
+    convert a word into a format to give to the classifier
     """
     word_len = len(word)
     return {
-        # 'last_letter': word[-1],
-        # 'word_length': word_len,
-        # 'first_letter': word[0],
-        # 'num_vowels': num_values(word),
+        'last_letter': word[-1],
+        'word_length': word_len,
+        'first_letter': word[0],
+        'num_vowels': num_values(word),
         'minimizing_fraction': find_index_of_most_negative_mutual_info(word),
-        # 'middle_letter': word[(word_len - 1) / 2 if (word_len % 2) else word_len / 2],
+        'middle_letter': word[(word_len - 1) / 2 if (word_len % 2) else word_len / 2],
         # maximize negative mutual information
-        # 'txns': consonent_to_vowel_transitions_fraction(word)
+        'txns': consonent_to_vowel_transitions_fraction(word)
     }
 
 
@@ -143,47 +148,19 @@ def train_model(compounds, non_compounds):
 
     random.shuffle(labeled_words)
     featuresets = [(compund_features(n), word_type) for (n, word_type) in labeled_words]
-    train_set, test_set = featuresets[500:], featuresets[:500]
+    train_set, test_set = featuresets[1000:], featuresets[:1000]
 
     classifier = nltk.NaiveBayesClassifier.train(train_set)
-    print(nltk.classify.accuracy(classifier, test_set))
+    print("CLASSIFIER ACCURACY {0}".format(nltk.classify.accuracy(classifier, test_set)))
     return classifier
 
-def test_classifer(classifier):
-    """
-    test a classifier
-    """
-    test_cases = [
-        ('bathhouse', True),
-        ('fuck', False),
-        ('fuckhead', True),
-        ('biology', False),
-        ('television', False)
-        ]
-    # test_cases = [('mammutwörter', True), ('backpfeifengesicht', True), ('heute', False)]
-    for word, expected in test_cases:
-        print "{0}: classfied as {1}, expected {2}. \n CLASSIFIER INPUT {3}".format(
-            word,
-            classifier.classify(compund_features(word)),
-            'compound' if expected else 'non compound',
-            compund_features(word)
-            )
-    # for idx in range(0, len(test_cases)):
-    #     c = test_cases[idx]
-    #     # expected = 'compound' if else 'non compound'
-    #     # found = 'compound' if (classifier.classify(compund_features(case[0]) == 'compound') else 'non compound'
-    #     print "{0}: classfied as {1}, expected {2}".format(c[0], classifier.classify(compund_features(c[0]), c[1])
-    print ""
-    # print classifier.classify(compund_features('fuck'))
-    # print classifier.classify(compund_features('fuckhead'))
-    print classifier.show_most_informative_features(5)
 
 
-def test_english_classifer(classifier):
+def test_classifier(classifier, filename):
     """
-    some specific testing for the english classifier, makes use of the gold standard list
+    compare classifier behaviour with collection of known compounds
     """
-    gold_standard = read_in_corpus('./data/english-compound-gold-standard.txt')
+    gold_standard = read_in_corpus(filename)
     gold_count = 0
     gold_misses = []
     for word in gold_standard:
@@ -191,32 +168,23 @@ def test_english_classifer(classifier):
             gold_count += 1
         else:
             gold_misses.append(word)
-    print "GOLD CHECK: {0}/{1}".format(gold_count, len(gold_standard))
-    print "The following words from the gold standard were expected to be compound, were labeled as not: {0}".format(
-        ', '.join(gold_misses)
-    )
+    print "Classifier correct categorizedly {0}/{1} known compounds".format(gold_count, len(gold_standard))
+    print "The first 500 it missed were {0}".format(', '.join(gold_misses[:500]))
 
 def main():
     """
     main method
     """
     global mutual_info
-    mutual_info = compute_bigram_and_unigram_mutual_info('./data/eng-dictionary.txt')
-    compounds, non_compounds = build_training_data('./data/eng-dictionary.txt')
-    classifer = train_model(compounds, non_compounds)
-    test_classifer(classifer)
-    test_english_classifer(classifer)
+    print "\n-------------------\nBUILDING TRAINING DATA\n-------------------\n"
+    mutual_info = compute_bigram_and_unigram_mutual_info('./data/english-cmu-reformat.txt')
+    compounds, non_compounds = build_training_data('./data/english-cmu-reformat.txt')
 
-    # compounds, non_compounds = build_training_data('./german-dict-final.txt')
-    # print compounds
-    # classifer = train_model(compounds, non_compounds)
-    # test_classifer(classifer)
-    # test_english_classifer(classifer)
-
-    # compounds, non_compounds = build_training_data('./thai-wordlist.txt')
-    # classifer = train_model(compounds, non_compounds)
-    # test_classifer(classifer)
-    # test_english_classifer(classifer)
+    print "\n-------------------\nBUILDING CLASSIFIER\n-------------------\n"
+    classifier = train_model(compounds, non_compounds)
+    print "\n-------------------\nTESTING CLASSIFIER \n-------------------\n"
+    print classifier.show_most_informative_features(20)
+    test_classifier(classifier, './data/english_compound_words.txt')
 
 if __name__ == "__main__":
     main()

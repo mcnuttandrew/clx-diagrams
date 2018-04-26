@@ -8,13 +8,25 @@ def compute_bigram_and_unigram_mutual_info(filename):
     """
     # initial variables
     corpus = read_in_corpus(filename)
-    unigrams = {' ': 0}
+    # using ' ' as stop char, and '#' as start char
+    unigrams = {
+        ' ': 0,
+        # '#': 0
+    }
     unigram_count = 0
     bigrams = {}
     bigrams_count = 0
 
     # generate counts
     for word in corpus:
+        # unigrams['#'] += 1
+        # unigram_count += 1
+        # start_pair = '#' + word[0]
+        # if start_pair not in bigrams:
+        #     bigrams[start_pair] = 0
+        # bigrams[start_pair] += 1
+        # bigrams_count += 1
+
         for idx in range(0, len(word)):
             letter = word[idx]
             if letter not in unigrams:
