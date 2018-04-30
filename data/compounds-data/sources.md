@@ -24,11 +24,14 @@ https://raw.githubusercontent.com/uschindler/german-decompounder/master/dictiona
 german-dict-2
 http://www1.ids-mannheim.de/kl/projekte/methoden/derewo.html
 
+dutch-dictionary
+http://www.gwicks.net/dictionaries.htm
 
 english_compound_words
 German_compound_words
 Thai_compond_words
 Greek_compound_words
+Dutch_compound_words
 Are all drawn from words that have been categorized on wiktionary
 
 Internal Sources (inferred data)

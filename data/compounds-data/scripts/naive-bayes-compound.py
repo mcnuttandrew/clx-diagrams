@@ -4,6 +4,17 @@ import random
 from utils import read_in_corpus
 from mutual_information import compute_bigram_and_unigram_mutual_info
 
+# thai
+# COMPOUND_GOLD_STANDARD = './data/Thai_compound_words.txt'
+# LANG_DICTIONARY = './data/thai-wordlist.txt'
+# english
+# COMPOUND_GOLD_STANDARD = './data/english_compound_words.txt'
+# LANG_DICTIONARY = './data/eng-dictionary.txt'
+# LANG_DICTIONARY = './data/english-cmu-reformat.txt'
+# german
+COMPOUND_GOLD_STANDARD = './data/German_compound_words.txt'
+LANG_DICTIONARY = './data/german-dict-final.txt'
+
 def read_in_corpus(filename):
     """
     Read and format corpus for consumption. returns a list of strings
@@ -57,7 +68,7 @@ def build_training_data(filename):
 
 def base_gold_check(eng_dict, found_words):
     count = 0
-    gold_standard = read_in_corpus('./data/english_compound_words.txt')
+    gold_standard = read_in_corpus(COMPOUND_GOLD_STANDARD)
     not_found = []
     for word in gold_standard:
         # if the word was in the predicated set cool count it
@@ -118,22 +129,42 @@ def find_index_of_most_negative_mutual_info(word):
             minimizing_val = mutual_info_val
             minimizing_idx = idx
     return (minimizing_idx + 0.0) / len(word)
+    # return minimizing_idx
     # return float("{0:.3f}".format((minimizing_idx + 0.0) / len(word)))
+
+def greatest_number_of_repeated_chars(word):
+    char_counts = {}
+    for letter in word:
+        if not letter in char_counts:
+            char_counts[letter] = 0
+        char_counts[letter] += 1
+
+    max_char = ''
+    max_count = -1
+    for char, count in char_counts.items():
+        if count > max_count:
+            max_count = count
+            max_char = char
+    return max_count
 
 def compund_features(word):
     """
     convert a word into a format to give to the classifier
     """
     word_len = len(word)
+    word_mid = (word_len - 1) / 2 if (word_len % 2) else word_len / 2
     return {
-        'last_letter': word[-1],
-        'word_length': word_len,
-        'first_letter': word[0],
-        'num_vowels': num_values(word),
+
+        # 'word': word,
+        # 'last_letter': word[-1],
+        # 'word_length': word_len,
+        # 'first_letter': word[0],
+        # 'num_vowels': num_values(word),
         'minimizing_fraction': find_index_of_most_negative_mutual_info(word),
-        'middle_letter': word[(word_len - 1) / 2 if (word_len % 2) else word_len / 2],
-        # maximize negative mutual information
-        'txns': consonent_to_vowel_transitions_fraction(word)
+        'middle_letter': word[word_mid],
+        'middle_pair': word[word_mid-1:word_mid],
+        # 'txns': consonent_to_vowel_transitions_fraction(word),
+        # 'max_char': greatest_number_of_repeated_chars(word)
     }
 
 
@@ -177,14 +208,14 @@ def main():
     """
     global mutual_info
     print "\n-------------------\nBUILDING TRAINING DATA\n-------------------\n"
-    mutual_info = compute_bigram_and_unigram_mutual_info('./data/english-cmu-reformat.txt')
-    compounds, non_compounds = build_training_data('./data/english-cmu-reformat.txt')
+    mutual_info = compute_bigram_and_unigram_mutual_info(LANG_DICTIONARY)
+    compounds, non_compounds = build_training_data(LANG_DICTIONARY)
 
     print "\n-------------------\nBUILDING CLASSIFIER\n-------------------\n"
     classifier = train_model(compounds, non_compounds)
     print "\n-------------------\nTESTING CLASSIFIER \n-------------------\n"
     print classifier.show_most_informative_features(20)
-    test_classifier(classifier, './data/english_compound_words.txt')
+    test_classifier(classifier, COMPOUND_GOLD_STANDARD)
 
 if __name__ == "__main__":
     main()
