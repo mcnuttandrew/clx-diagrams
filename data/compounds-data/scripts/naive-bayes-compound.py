@@ -8,12 +8,18 @@ from mutual_information import compute_bigram_and_unigram_mutual_info
 # COMPOUND_GOLD_STANDARD = './data/Thai_compound_words.txt'
 # LANG_DICTIONARY = './data/thai-wordlist.txt'
 # english
-# COMPOUND_GOLD_STANDARD = './data/english_compound_words.txt'
-# LANG_DICTIONARY = './data/eng-dictionary.txt'
+COMPOUND_GOLD_STANDARD = './data/english_compound_words.txt'
+LANG_DICTIONARY = './data/eng-dictionary.txt'
 # LANG_DICTIONARY = './data/english-cmu-reformat.txt'
 # german
-COMPOUND_GOLD_STANDARD = './data/German_compound_words.txt'
-LANG_DICTIONARY = './data/german-dict-final.txt'
+# COMPOUND_GOLD_STANDARD = './data/German_compound_words.txt'
+# LANG_DICTIONARY = './data/german-dict-final.txt'
+# dutch
+# COMPOUND_GOLD_STANDARD = './data/Dutch_compound_words.txt'
+# LANG_DICTIONARY = './data/dutch-dictionary.txt'
+# Finnish
+# COMPOUND_GOLD_STANDARD = './data/Finnish_compound_words.txt'
+# LANG_DICTIONARY = './data/finnish-dictionary.txt'
 
 def read_in_corpus(filename):
     """
@@ -50,19 +56,21 @@ def build_training_data(filename):
 
     found_words = {}
     for sus_word in suspected_words:
-        # print "word: {0} subwords: {1}".format(sus_word["word"], sus_word["sub_words"])
         found_words[sus_word["word"]] = True
 
     non_compounds = []
     compounds = []
     for word in input_corpus:
+        if len(word) == 0:
+            continue
         if word in found_words:
             compounds.append(word)
         else:
             non_compounds.append(word)
 
 
-    base_gold_check(lang_dict, found_words)
+    # should use this as a filter against false positive/false negatives?
+    # base_gold_check(lang_dict, found_words)
 
     return (compounds, non_compounds)
 
@@ -115,11 +123,8 @@ def find_index_of_most_negative_mutual_info(word):
     """
     find where in the word the most negative pmi occurs
     """
-
     minimizing_idx = 0
     minimizing_val = 0
-    # print mutual_info
-    # for idx in range(-1, len(word)):
     for idx in range(0, len(word)):
         letter_a = word[idx] if idx >= 0 else '#'
         letter_b = word[idx + 1] if idx < (len(word) - 1) else ' '
@@ -129,8 +134,6 @@ def find_index_of_most_negative_mutual_info(word):
             minimizing_val = mutual_info_val
             minimizing_idx = idx
     return (minimizing_idx + 0.0) / len(word)
-    # return minimizing_idx
-    # return float("{0:.3f}".format((minimizing_idx + 0.0) / len(word)))
 
 def greatest_number_of_repeated_chars(word):
     char_counts = {}
@@ -160,9 +163,11 @@ def compund_features(word):
         # 'word_length': word_len,
         # 'first_letter': word[0],
         # 'num_vowels': num_values(word),
-        'minimizing_fraction': find_index_of_most_negative_mutual_info(word),
+        # 'minimizing_fraction': find_index_of_most_negative_mutual_info(word),
         'middle_letter': word[word_mid],
-        'middle_pair': word[word_mid-1:word_mid],
+        'middle_pair': word[word_mid-1:word_mid+1],
+        # 'middle_pair_2': mutual_info[word[word_mid:word_mid+2]],
+        'middle_pair_2': word[word_mid-2:   word_mid],
         # 'txns': consonent_to_vowel_transitions_fraction(word),
         # 'max_char': greatest_number_of_repeated_chars(word)
     }
@@ -179,7 +184,7 @@ def train_model(compounds, non_compounds):
 
     random.shuffle(labeled_words)
     featuresets = [(compund_features(n), word_type) for (n, word_type) in labeled_words]
-    train_set, test_set = featuresets[1000:], featuresets[:1000]
+    train_set, test_set = featuresets[3000:], featuresets[:3000]
 
     classifier = nltk.NaiveBayesClassifier.train(train_set)
     print("CLASSIFIER ACCURACY {0}".format(nltk.classify.accuracy(classifier, test_set)))
@@ -191,7 +196,9 @@ def test_classifier(classifier, filename):
     """
     compare classifier behaviour with collection of known compounds
     """
-    gold_standard = read_in_corpus(filename)
+    gold_standard_a = read_in_corpus(filename)
+    # gold_standard_b = read_in_corpus('./data/German_compound_words.txt')
+    gold_standard = gold_standard_a# + gold_standard_b
     gold_count = 0
     gold_misses = []
     for word in gold_standard:
@@ -209,8 +216,12 @@ def main():
     global mutual_info
     print "\n-------------------\nBUILDING TRAINING DATA\n-------------------\n"
     mutual_info = compute_bigram_and_unigram_mutual_info(LANG_DICTIONARY)
-    compounds, non_compounds = build_training_data(LANG_DICTIONARY)
-
+    compounds_a, non_compounds_a = build_training_data(LANG_DICTIONARY)
+    # COMPOUND_GOLD_STANDARD = './data/German_compound_words.txt'
+    # LANG_DICTIONARY = './data/german-dict-final.txt'
+    # compounds_b, non_compounds_b = build_training_data('./data/german-dict-final.txt')
+    compounds = compounds_a# + compounds_b
+    non_compounds = non_compounds_a# + non_compounds_b
     print "\n-------------------\nBUILDING CLASSIFIER\n-------------------\n"
     classifier = train_model(compounds, non_compounds)
     print "\n-------------------\nTESTING CLASSIFIER \n-------------------\n"

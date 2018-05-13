@@ -27,6 +27,9 @@ http://www1.ids-mannheim.de/kl/projekte/methoden/derewo.html
 dutch-dictionary
 http://www.gwicks.net/dictionaries.htm
 
+finnish-dictionary
+https://raw.githubusercontent.com/pulmark/finnish-dictionary/master/kotus-sanalista_v1.txt
+
 english_compound_words
 German_compound_words
 Thai_compond_words
